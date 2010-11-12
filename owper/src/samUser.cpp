@@ -65,31 +65,26 @@ inline HexCharStruct hex(char _c)
         }else {
             hasBlankPassword = false;
 
-            /*char ntHash[vStruct->ntpw_len + 1];
-            memcpy(ntHash, vStruct->ntpw_ofs, vStruct->ntpw_len);
+            unsigned char ntHash[vStruct->ntpw_len + 1];
+            memcpy(ntHash, vBuffer + vStruct->ntpw_ofs + 0xCC, vStruct->ntpw_len);
             ntHash[vStruct->ntpw_len] = '\0';
 
-            char lmHash[vStruct->lmpw_len + 1];
-            memcpy(lmHash, vStruct->lmpw_ofs, vStruct->lmpw_len);
-            lmHash[vStruct->lmpw_len] = '\0';*/
+            unsigned char lmHash[vStruct->lmpw_len + 1];
+            memcpy(lmHash, vBuffer + vStruct->lmpw_ofs + 0xCC, vStruct->lmpw_len);
+            lmHash[vStruct->lmpw_len] = '\0';;
 
-            string ntHash = getUserValue(vBuffer, vStruct->ntpw_ofs, vStruct->ntpw_len);
-            string lmHash = getUserValue(vBuffer, vStruct->lmpw_ofs, vStruct->lmpw_len);
+            printf("%s's Password hashes:\nNT[%d]:\t", userName.c_str(), vStruct->ntpw_len);
 
-            printf("%s's Password hashes:\nNT:\t", userName.c_str());
-
-            for(unsigned int i = 0; i < ntHash.size(); i++) {
-            	printf("%2.2X ", (unsigned char) ntHash.at(i));
+            for(int i = 0; i < vStruct->ntpw_len; i++) {
+            	printf("%2.2X ", ntHash[i]);
             }
 
-            std::cout << "\n" << ntHash;
-            std::cout << "\nLM:\t";
+            std::cout << "\nLM[" << vStruct->ntpw_len << "]:\t";
 
-            for(unsigned int i = 0; i < lmHash.size(); i++) {
-            	printf("%2.2X ", (unsigned char) lmHash.at(i));
+            for(int i = 0; i < vStruct->lmpw_len; i++) {
+            	printf("%2.2X ", lmHash[i]);
             }
 
-            std::cout << "\n" << lmHash;
             std::cout << std::endl << std::endl;
         }
 
