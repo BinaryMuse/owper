@@ -20,6 +20,22 @@
 #include "include/samUser.h"
 
 namespace owper {
+struct HexCharStruct
+{
+  char c;
+  HexCharStruct(char _c) : c(_c) { }
+};
+
+inline std::ostream& operator<<(std::ostream& o, const HexCharStruct& hs)
+{
+  return (o << std::hex << (int)hs.c);
+}
+
+inline HexCharStruct hex(char _c)
+{
+  return HexCharStruct(_c);
+}
+
     samUser::samUser(ntreg::keyval *inVStructRegValue, string inVStructPath) {
         vStructPath = inVStructPath;
         vStructRegValue = inVStructRegValue;
@@ -48,6 +64,33 @@ namespace owper {
             hasBlankPassword = true;
         }else {
             hasBlankPassword = false;
+
+            /*char ntHash[vStruct->ntpw_len + 1];
+            memcpy(ntHash, vStruct->ntpw_ofs, vStruct->ntpw_len);
+            ntHash[vStruct->ntpw_len] = '\0';
+
+            char lmHash[vStruct->lmpw_len + 1];
+            memcpy(lmHash, vStruct->lmpw_ofs, vStruct->lmpw_len);
+            lmHash[vStruct->lmpw_len] = '\0';*/
+
+            string ntHash = getUserValue(vBuffer, vStruct->ntpw_ofs, vStruct->ntpw_len);
+            string lmHash = getUserValue(vBuffer, vStruct->lmpw_ofs, vStruct->lmpw_len);
+
+            printf("%s's Password hashes:\nNT:\t", userName.c_str());
+
+            for(unsigned int i = 0; i < ntHash.size(); i++) {
+            	printf("%2.2X ", (unsigned char) ntHash.at(i));
+            }
+
+            std::cout << "\n" << ntHash;
+            std::cout << "\nLM:\t";
+
+            for(unsigned int i = 0; i < lmHash.size(); i++) {
+            	printf("%2.2X ", (unsigned char) lmHash.at(i));
+            }
+
+            std::cout << "\n" << lmHash;
+            std::cout << std::endl << std::endl;
         }
 
         regDataChanged = false;
