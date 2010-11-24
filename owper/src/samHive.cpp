@@ -106,4 +106,38 @@ namespace owper {
         regHive->state |= HMODE_DIRTY;
         return allSuccessful;
     }
+
+    unsigned char* samHive::getFValue() {
+        unsigned char* fValue;
+        fValue = (unsigned char*)ntreg::get_val_data(this->regHive, 0, (char*)"\\SAM\\Domains\\Account\\F", VAL_TYPE_REG_BINARY);
+
+        if(!fValue) {
+            throw(new owpException("No valid F Value found in \\SAM\\Domains\\Account"));
+        }
+
+        return fValue;
+    }
+
+    unsigned char* samHive::getHashedBootKey(unsigned char* bootKey) {
+        unsigned char aqwerty[] = "!@#$%^&*()qwertyUIOPAzxcvbnmQQQQQQQQQQQQ)(*@&%";
+        unsigned char anum[] = "0123456789012345678901234567890123456789";
+
+        MD5_CTX md5Context;
+        unsigned char md5Hash[0x10];
+        RC4_KEY rc4Key;
+        unsigned char* hashedBootKey = new unsigned char[0x20];
+
+        unsigned char* fValue = this->getFValue();
+
+        MD5_Init(&md5Context);
+        MD5_Update(&md5Context, &fValue[0x70], 0x10);
+        MD5_Update(&md5Context, aqwerty, 0x2f);
+        MD5_Update(&md5Context, bootKey, 0x10);
+        MD5_Update(&md5Context, anum, 0x29);
+        MD5_Final(md5Hash, &md5Context);
+        RC4_set_key(&rc4Key, 0x10, md5Hash);
+        RC4(&rc4Key, 0x20, &fValue[0x80], hashedBootKey);
+
+        return hashedBootKey;
+    }
 }

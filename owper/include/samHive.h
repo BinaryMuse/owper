@@ -23,6 +23,10 @@
 
 #include <iostream>
 #include <vector>
+
+#include <openssl/md5.h>
+#include <openssl/rc4.h>
+
 #include "include/hive.h"
 #include "include/stringManip.h"
 #include "include/sam.h"
@@ -43,6 +47,11 @@ namespace owper {
         int      getUserRID(char* userName);
         samUser* getSamUser(int rid);
         string   getUserValue(char* dataBuffer, int valueOffset, int valueLength);
+
+        //syskey related methods
+        unsigned char* getFValue();
+        unsigned char* getHashedBootKey(unsigned char* bootKey);
+
     public:
         samHive(const char* fileName, int hiveMode = HMODE_RW);
         vector<samUser*> getUserList(){ return userList; };
