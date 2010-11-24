@@ -33,7 +33,7 @@ namespace owper {
             hive(fileName, hiveMode) {
         if(this->getType() != HIVE_TYPE_SYSTEM) {
             this->closeHive();
-            throw(new owpException("The filename given does not point to a SAM type hive"));
+            throw(new owpException("The filename given does not point to a SYSTEM type hive"));
         }
 
         printf("Default control set: %d\n", this->getDefaultControlSet());
