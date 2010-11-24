@@ -36,7 +36,7 @@ namespace owper {
     class systemHive : public hive {
     public:
     	int getDefaultControlSet();
-    	char* getBootKey();
+    	unsigned char* getBootKey();
     	char* getClassName(char* nkKeyPath);
     public:
         systemHive(const char* fileName, int hiveMode = HMODE_RO);

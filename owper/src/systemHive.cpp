@@ -35,7 +35,7 @@ namespace owper {
     	return ntreg::get_dword(this->regHive, 0, (char*)"\\Select\\Default");
     }
 
-    char* systemHive::getBootKey() {
+    unsigned char* systemHive::getBootKey() {
     	int currentControlSet = getDefaultControlSet();
     	char *keyNames[] = {(char*)"JD", (char*)"Skew1", (char*)"GBG", (char*)"Data"};
 
