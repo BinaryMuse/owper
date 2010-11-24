@@ -2,3 +2,4 @@ owpergui
 *.o
 owper/libowper.a
 .settings
+test
