@@ -34,13 +34,14 @@ using std::endl;
 
 namespace owper {
     class systemHive : public hive {
-    public:
+    private:
         int getDefaultControlSet();
-        unsigned char* getBootKey();
         void sortBootKey(unsigned char* unsortedBootKey, unsigned char* sortedBootKey);
         char* getClassName(char* nkKeyPath);
     public:
         systemHive(const char* fileName, int hiveMode = HMODE_RO);
+
+        unsigned char* getBootKey();
     };
 
 }
