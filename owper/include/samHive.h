@@ -48,6 +48,7 @@ namespace owper {
         samUser* getSamUser(int rid);
         string   getUserValue(char* dataBuffer, int valueOffset, int valueLength);
 
+    public:
         //syskey related methods
         unsigned char* getFValue();
         unsigned char* getHashedBootKey(unsigned char* bootKey);
