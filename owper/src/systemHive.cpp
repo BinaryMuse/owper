@@ -40,39 +40,39 @@ namespace owper {
     }
 
     int systemHive::getDefaultControlSet() {
-    	return ntreg::get_dword(this->regHive, 0, (char*)"\\Select\\Default");
+        return ntreg::get_dword(this->regHive, 0, (char*)"\\Select\\Default");
     }
 
     unsigned char* systemHive::getBootKey() {
-    	int currentControlSet = getDefaultControlSet();
-    	char *keyNames[] = {(char*)"JD", (char*)"Skew1", (char*)"GBG", (char*)"Data"};
+        int currentControlSet = getDefaultControlSet();
+        char *keyNames[] = {(char*)"JD", (char*)"Skew1", (char*)"GBG", (char*)"Data"};
 
-    	string curKeyPath;
-    	char* curClassName;
-    	unsigned char unsortedBootKey[0x10] = {0};
-    	for(int keyIndex = 0; keyIndex < 4; keyIndex++) {
-    		curKeyPath = stringPrintf("\\ControlSet00%d\\Control\\Lsa\\%s",
-    								  currentControlSet,
-    								  keyNames[keyIndex]
-    					 );
+        string curKeyPath;
+        char* curClassName;
+        unsigned char unsortedBootKey[0x10] = {0};
+        for(int keyIndex = 0; keyIndex < 4; keyIndex++) {
+            curKeyPath = stringPrintf("\\ControlSet00%d\\Control\\Lsa\\%s",
+                                      currentControlSet,
+                                      keyNames[keyIndex]
+                         );
 
-    		try {
-    			curClassName = this->getClassName((char*)curKeyPath.c_str());
-    		} catch(owpException *exception) {
-    			//this path is no good - re-throw
-    			throw(exception);
-    		}
+            try {
+                curClassName = this->getClassName((char*)curKeyPath.c_str());
+            } catch(owpException *exception) {
+                //this path is no good - re-throw
+                throw(exception);
+            }
 
-    		sscanf(curClassName, "%x", (int*)(&unsortedBootKey[keyIndex*4]));
+            sscanf(curClassName, "%x", (int*)(&unsortedBootKey[keyIndex*4]));
 
-    		delete curClassName;
-    		curClassName = 0;
-    	}
+            delete curClassName;
+            curClassName = 0;
+        }
 
-    	unsigned char *sortedBootKey = new unsigned char[0x10];
-    	this->sortBootKey(unsortedBootKey, sortedBootKey);
+        unsigned char *sortedBootKey = new unsigned char[0x10];
+        this->sortBootKey(unsortedBootKey, sortedBootKey);
 
-    	return sortedBootKey;
+        return sortedBootKey;
     }
 
     void systemHive::sortBootKey(unsigned char* unsortedBootKey, unsigned char* sortedBootKey) {
@@ -82,24 +82,24 @@ namespace owper {
     }
 
     char* systemHive::getClassName(char* nkKeyPath) {
-    	reg_off nkKeyOffset = this->travPath(0, nkKeyPath, 0);
-    	struct ntreg::nk_key *nkKey;
+        reg_off nkKeyOffset = this->travPath(0, nkKeyPath, 0);
+        struct ntreg::nk_key *nkKey;
 
-    	try {
-    		nkKey = this->getNkKeyAtOffset(nkKeyOffset);
-    	}catch(owpException *exception) {
-    		//we must have supplied a bad path
-    		delete exception;
-    		throw(new owpException(stringPrintf("Invalid nk_key path: %s", nkKeyPath)));
-    	}
+        try {
+            nkKey = this->getNkKeyAtOffset(nkKeyOffset);
+        }catch(owpException *exception) {
+            //we must have supplied a bad path
+            delete exception;
+            throw(new owpException(stringPrintf("Invalid nk_key path: %s", nkKeyPath)));
+        }
 
-    	char *className = new char[9];
-    	int shortestLength = (nkKey->len_classnam > (8 * 2))?(8 * 2):(nkKey->len_classnam);
+        char *className = new char[9];
+        int shortestLength = (nkKey->len_classnam > (8 * 2))?(8 * 2):(nkKey->len_classnam);
 
-    	int classNameOffset= nkKey->ofs_classnam + 4;
-    	classNameOffset += 0x1000; //this additional offset was taken from bkhive.c:136 (v1.1.1)
+        int classNameOffset= nkKey->ofs_classnam + 4;
+        classNameOffset += 0x1000; //this additional offset was taken from bkhive.c:136 (v1.1.1)
 
-    	ntreg::cheap_uni2ascii((char*)(this->regHive->buffer + classNameOffset), className, shortestLength);
-    	return className;
+        ntreg::cheap_uni2ascii((char*)(this->regHive->buffer + classNameOffset), className, shortestLength);
+        return className;
     }
 }
