@@ -18,6 +18,14 @@
  *
  */
 
+#if BYTE_ORDER == LITTLE_ENDIAN
+  int bootKeyPermOrder[] = { 0xb, 0x6, 0x7, 0x1, 0x8, 0xa, 0xe, 0x0, 0x3, 0x5, 0x2,
+                             0xf, 0xd, 0x9, 0xc, 0x4 };
+#elif BYTE_ORDER == BIG_ENDIAN
+  int bootKeyPermOrder[] = { 0x8, 0x5, 0x4, 0x2, 0xb, 0x9, 0xd, 0x3, 0x0, 0x6, 0x1,
+                             0xc, 0xe, 0xa, 0xf, 0x7 };
+#endif
+
 #include "include/systemHive.h"
 
 namespace owper {
@@ -61,13 +69,16 @@ namespace owper {
     		curClassName = 0;
     	}
 
-    	printf("Bootkey unsorted: ");
-    	for( int i = 0; i < 0x10; i++ )  {
-    	    printf("%.2x", unsortedBootKey[i]);
-    	}
-    	printf("\n");
+    	unsigned char *sortedBootKey = new unsigned char[0x10];
+    	this->sortBootKey(unsortedBootKey, sortedBootKey);
 
-    	return (char*)NULL;
+    	return sortedBootKey;
+    }
+
+    void systemHive::sortBootKey(unsigned char* unsortedBootKey, unsigned char* sortedBootKey) {
+        for(int i = 0; i < 0x10; i++)  {
+            sortedBootKey[i] = unsortedBootKey[bootKeyPermOrder[i]];
+        }
     }
 
     char* systemHive::getClassName(char* nkKeyPath) {
