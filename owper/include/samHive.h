@@ -42,19 +42,19 @@ namespace owper {
     class samHive : public hive {
     private:
         vector<samUser*> userList;
+        unsigned char* hashedBootKey;
 
         void     loadUserList();
         int      getUserRID(char* userName);
         samUser* getSamUser(int rid);
         string   getUserValue(char* dataBuffer, int valueOffset, int valueLength);
 
-    public:
         //syskey related methods
         unsigned char* getFValue();
         unsigned char* getHashedBootKey(unsigned char* bootKey);
 
     public:
-        samHive(const char* fileName, int hiveMode = HMODE_RW);
+        samHive(const char* fileName, unsigned char* bootKey, int hiveMode = HMODE_RW);
         vector<samUser*> getUserList(){ return userList; };
         bool     mergeChangesToHive();
     };

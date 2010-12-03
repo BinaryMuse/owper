@@ -20,27 +20,20 @@
 #include "include/samUser.h"
 
 namespace owper {
-struct HexCharStruct
-{
-  char c;
-  HexCharStruct(char _c) : c(_c) { }
-};
-
-inline std::ostream& operator<<(std::ostream& o, const HexCharStruct& hs)
-{
-  return (o << std::hex << (int)hs.c);
-}
-
-inline HexCharStruct hex(char _c)
-{
-  return HexCharStruct(_c);
-}
-
-    samUser::samUser(ntreg::keyval *inVStructRegValue, string inVStructPath) {
+    samUser::samUser(int inRid, ntreg::keyval *inVStructRegValue, string inVStructPath, unsigned char* inHashedBootKey) {
+        rid = inRid;
         vStructPath = inVStructPath;
         vStructRegValue = inVStructRegValue;
         vStruct = (struct ntreg::user_V *)((char*)(&inVStructRegValue->data));
-        char* vBuffer = (char*)&(inVStructRegValue->data);
+        vBuffer = (char*)&(inVStructRegValue->data);
+
+        if(inHashedBootKey) {
+            hashedBootKey = new unsigned char[0x20];
+            memcpy(hashedBootKey, inHashedBootKey, 0x20);
+        } else {
+            hashedBootKey = 0;
+        }
+
         int userNameOffset = vStruct->username_ofs;
         int userNameLength = vStruct->username_len;
         int fullNameOffset = vStruct->fullname_ofs;
@@ -60,35 +53,92 @@ inline HexCharStruct hex(char _c)
         userName = this->getUserValue(vBuffer, userNameOffset, userNameLength);
         fullName = this->getUserValue(vBuffer, fullNameOffset, fullNameLength);
 
-        if(vStruct->ntpw_len < 16 && vStruct->lmpw_len < 16) {
-            hasBlankPassword = true;
-        }else {
-            hasBlankPassword = false;
+        if(hashedBootKey) {
+            //we decide whether passwords are blank based on the hash contents
+            this->calcLMHash();
 
-            unsigned char ntHash[vStruct->ntpw_len + 1];
-            memcpy(ntHash, vBuffer + vStruct->ntpw_ofs + 0xCC, vStruct->ntpw_len);
-            ntHash[vStruct->ntpw_len] = '\0';
+            this->hasBlankPassword = true;
 
-            unsigned char lmHash[vStruct->lmpw_len + 1];
-            memcpy(lmHash, vBuffer + vStruct->lmpw_ofs + 0xCC, vStruct->lmpw_len);
-            lmHash[vStruct->lmpw_len] = '\0';;
-
-            printf("%s's Password hashes:\nNT[%d]:\t", userName.c_str(), vStruct->ntpw_len);
-
-            for(int i = 0; i < vStruct->ntpw_len; i++) {
-            	printf("%2.2X ", ntHash[i]);
+            if(!lmHashIsEmpty()) {
+                hasBlankPassword = false;
             }
-
-            std::cout << "\nLM[" << vStruct->ntpw_len << "]:\t";
-
-            for(int i = 0; i < vStruct->lmpw_len; i++) {
-            	printf("%2.2X ", lmHash[i]);
+        } else {
+            //we decide whether passwords are blank based on hash lengths
+            if(vStruct->lmpw_len == 0x14 || vStruct->lmpw_len == 0x14) {
+                hasBlankPassword = false;
+            } else {
+                hasBlankPassword = true;
             }
-
-            std::cout << std::endl << std::endl;
         }
 
+        printf("User: %s has blank password? %s\n", userName.c_str(), ((hasBlankPassword)?("true"):("false")));
+
         regDataChanged = false;
+    }
+
+    void samUser::calcLMHash() {
+        if(!hashedBootKey) {
+            std::cout << "No hashed boot key available!\n\n";
+            lmHash = 0;
+            return;
+        }
+
+        if(vStruct->lmpw_len != 0x14) {
+            lmHash = 0;
+            return;
+        }
+
+        MD5_CTX md5Context;
+        unsigned char md5Hash[0x10];
+        unsigned char obfKey[0x10];
+        RC4_KEY rc4Key;
+        unsigned char almpassword[] = "LMPASSWORD";
+        int lmPasswordOffset = vStruct->lmpw_ofs + 0xCC;
+
+        MD5_Init(&md5Context);
+        MD5_Update(&md5Context, hashedBootKey, 0x10);
+        MD5_Update(&md5Context, &rid, 0x4);
+        MD5_Update(&md5Context, almpassword, 0xb);
+        MD5_Final(md5Hash, &md5Context);
+        RC4_set_key( &rc4Key, 0x10, md5Hash);
+        RC4( &rc4Key, 0x10, (const unsigned char*)vBuffer + lmPasswordOffset + 4, obfKey);
+
+        /* Get the two decrpt keys. */
+        des_key_schedule keySched1, keySched2;
+        des_cblock desKey1, desKey2;
+
+        ridToKey1(rid,(unsigned char *)desKey1);
+        des_set_key_checked((des_cblock *)desKey1, keySched1);
+        ridToKey2(rid,(unsigned char *)desKey2);
+        des_set_key_unchecked((des_cblock *)desKey2, keySched2);
+
+        lmHash = new unsigned char[0x10];
+
+        /* Decrypt the lanman password hash as two 8 byte blocks. */
+        des_ecb_encrypt((des_cblock *)obfKey,
+                (des_cblock *)lmHash, keySched1, DES_DECRYPT);
+        des_ecb_encrypt((des_cblock *)(obfKey + 8),
+                (des_cblock *)&lmHash[8], keySched2, DES_DECRYPT);
+    }
+
+    bool samUser::lmHashIsEmpty() {
+        if(!lmHash) {
+            return true;
+        }
+
+        //convert the hash to a string
+        char lmHashChars[33];
+        for(int i = 0; i < 0x10 ; i++) {
+            sprintf(&(lmHashChars[i*2]), "%.2x", lmHash[i]);
+        }
+
+        lmHashChars[32] = '\0';
+
+        if(strcmp(lmHashChars, "aad3b435b51404eeaad3b435b51404ee") == 0) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -151,6 +201,54 @@ inline HexCharStruct hex(char _c)
         vStruct->ntpw_len = 0;
         hasBlankPassword = true;
         regDataChanged = true;
+    }
+
+    void samUser::strToDesKey(unsigned char *str,unsigned char *key)
+    {
+        int i;
+
+        key[0] = str[0]>>1;
+        key[1] = ((str[0]&0x01)<<6) | (str[1]>>2);
+        key[2] = ((str[1]&0x03)<<5) | (str[2]>>3);
+        key[3] = ((str[2]&0x07)<<4) | (str[3]>>4);
+        key[4] = ((str[3]&0x0F)<<3) | (str[4]>>5);
+        key[5] = ((str[4]&0x1F)<<2) | (str[5]>>6);
+        key[6] = ((str[5]&0x3F)<<1) | (str[6]>>7);
+        key[7] = str[6]&0x7F;
+        for (i=0;i<8;i++) {
+            key[i] = (key[i]<<1);
+        }
+        des_set_odd_parity((des_cblock *)key);
+    }
+
+    void samUser::ridToKey1(unsigned long rid,unsigned char deskey[8])
+    {
+        unsigned char s[7];
+
+        s[0] = (unsigned char)(rid & 0xFF);
+        s[1] = (unsigned char)((rid>>8) & 0xFF);
+        s[2] = (unsigned char)((rid>>16) & 0xFF);
+        s[3] = (unsigned char)((rid>>24) & 0xFF);
+        s[4] = s[0];
+        s[5] = s[1];
+        s[6] = s[2];
+
+        strToDesKey(s,deskey);
+    }
+
+    void samUser::ridToKey2(unsigned long rid,unsigned char deskey[8])
+    {
+        unsigned char s[7];
+
+        s[0] = (unsigned char)((rid>>24) & 0xFF);
+        s[1] = (unsigned char)(rid & 0xFF);
+        s[2] = (unsigned char)((rid>>8) & 0xFF);
+        s[3] = (unsigned char)((rid>>16) & 0xFF);
+        s[4] = s[0];
+        s[5] = s[1];
+        s[6] = s[2];
+
+        strToDesKey(s,deskey);
     }
 
     samUser::~samUser() {

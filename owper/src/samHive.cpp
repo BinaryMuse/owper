@@ -21,11 +21,17 @@
 #include "include/samHive.h"
 
 namespace owper {
-    samHive::samHive(const char* fileName, int hiveMode/* = HMODE_RW*/):
+    samHive::samHive(const char* fileName,  unsigned char* bootKey, int hiveMode/* = HMODE_RW*/):
             hive(fileName, hiveMode) {
         if(this->getType() != HIVE_TYPE_SAM) {
             this->closeHive();
             throw(new owpException("The filename given does not point to a SAM type hive"));
+        }
+
+        if(bootKey) {
+            hashedBootKey = this->getHashedBootKey(bootKey);
+        } else {
+            hashedBootKey = 0;
         }
 
         this->loadUserList();
@@ -42,7 +48,7 @@ namespace owper {
 
         samUser *newSamUser;
         try{
-            newSamUser = new samUser(vValue, vValuePath);
+            newSamUser = new samUser(rid, vValue, vValuePath, hashedBootKey);
         }catch(owpException e) {
             cerr << e.formattedMessage;
             newSamUser = NULL;

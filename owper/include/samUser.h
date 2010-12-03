@@ -26,6 +26,10 @@
 #include <string>
 #include <cstring>
 
+#include <openssl/md5.h>
+#include <openssl/rc4.h>
+#include <openssl/des.h>
+
 #include "include/ntreg.h"
 #include "include/sam.h"
 #include "include/binaryManip.h"
@@ -36,9 +40,14 @@ using std::string;
 namespace owper {
     class samUser {
     private:
+        int            rid;
         string         userName;
         string         fullName;
+        unsigned char *hashedBootKey;
+        unsigned char *lmHash;
+        //unsigned char *ntHash;
         string         vStructPath;
+        char*          vBuffer;
         ntreg::keyval *vStructRegValue;
         ntreg::user_V *vStruct;
         bool           hasBlankPassword;
@@ -50,7 +59,15 @@ namespace owper {
         string getUserValue(char* dataBuffer, int valueOffset, int valueLength);
 
     public:
-        samUser(ntreg::keyval *inVStructRegValue, string inVStructPath);
+        /* syskey related functions */
+        void calcLMHash();
+        bool lmHashIsEmpty();
+        void ridToKey1(unsigned long rid, unsigned char deskey[8]);
+        void ridToKey2(unsigned long rid, unsigned char deskey[8]);
+        void strToDesKey(unsigned char *str, unsigned char *key);
+
+    public:
+        samUser(int inRid, ntreg::keyval *inVStructRegValue, string inVStructPath, unsigned char* hashedBootKey);
         ~samUser();
         void blankPassword();
 
