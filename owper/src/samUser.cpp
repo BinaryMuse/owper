@@ -26,6 +26,8 @@ namespace owper {
         vStructRegValue = inVStructRegValue;
         vStruct = (struct ntreg::user_V *)((char*)(&inVStructRegValue->data));
         vBuffer = (char*)&(inVStructRegValue->data);
+        keySched1 = 0;
+        keySched2 = 0;
 
         if(inHashedBootKey) {
             hashedBootKey = new unsigned char[0x20];
@@ -55,11 +57,16 @@ namespace owper {
 
         if(hashedBootKey) {
             //we decide whether passwords are blank based on the hash contents
-            this->calcLMHash();
+            lmHash = this->decryptHash(vStruct->lmpw_ofs, vStruct->lmpw_len, "LMPASSWORD");
+            ntHash = this->decryptHash(vStruct->ntpw_ofs, vStruct->ntpw_len, "NTPASSWORD");
 
             this->hasBlankPassword = true;
 
-            if(!lmHashIsEmpty()) {
+            if(!hashIsEmpty(lmHash, "aad3b435b51404eeaad3b435b51404ee")) {
+                hasBlankPassword = false;
+            }
+
+            if(!hashIsEmpty(ntHash, "31d6cfe0d16ae931b73c59d7e0c089c0")) {
                 hasBlankPassword = false;
             }
         } else {
@@ -76,69 +83,111 @@ namespace owper {
         regDataChanged = false;
     }
 
-    void samUser::calcLMHash() {
+    unsigned char* samUser::decryptHash(int hashOffset, int hashLength, const char* extraHashInput) {
         if(!hashedBootKey) {
             std::cout << "No hashed boot key available!\n\n";
-            lmHash = 0;
-            return;
+            return NULL;
         }
 
-        if(vStruct->lmpw_len != 0x14) {
-            lmHash = 0;
-            return;
+        if(hashLength != 0x14) {
+            return NULL;
         }
 
         MD5_CTX md5Context;
         unsigned char md5Hash[0x10];
         unsigned char obfKey[0x10];
         RC4_KEY rc4Key;
-        unsigned char almpassword[] = "LMPASSWORD";
-        int lmPasswordOffset = vStruct->lmpw_ofs + 0xCC;
+        hashOffset += 0xCC;
 
         MD5_Init(&md5Context);
         MD5_Update(&md5Context, hashedBootKey, 0x10);
         MD5_Update(&md5Context, &rid, 0x4);
-        MD5_Update(&md5Context, almpassword, 0xb);
+        MD5_Update(&md5Context, extraHashInput, 0xb);
         MD5_Final(md5Hash, &md5Context);
         RC4_set_key( &rc4Key, 0x10, md5Hash);
-        RC4( &rc4Key, 0x10, (const unsigned char*)vBuffer + lmPasswordOffset + 4, obfKey);
+        RC4( &rc4Key, 0x10, (const unsigned char*)vBuffer + hashOffset + 4, obfKey);
 
-        /* Get the two decrpt keys. */
-        des_key_schedule keySched1, keySched2;
-        des_cblock desKey1, desKey2;
+        //these keys are cached as member variables
+        if(keySched1 == 0 || keySched2 == 0) {
+            /* Get the two decrypt keys. */
+            keySched1 = new des_key_schedule;
+            keySched2 = new des_key_schedule;
+            des_cblock desKey1, desKey2;
 
-        ridToKey1(rid,(unsigned char *)desKey1);
-        des_set_key_checked((des_cblock *)desKey1, keySched1);
-        ridToKey2(rid,(unsigned char *)desKey2);
-        des_set_key_unchecked((des_cblock *)desKey2, keySched2);
+            ridToKey1(rid,(unsigned char *)desKey1);
+            des_set_key_checked((des_cblock *)desKey1, (*keySched1));
+            ridToKey2(rid,(unsigned char *)desKey2);
+            des_set_key_unchecked((des_cblock *)desKey2, (*keySched2));
+        }
 
-        lmHash = new unsigned char[0x10];
+        unsigned char *decryptedHash = new unsigned char[0x10];
 
-        /* Decrypt the lanman password hash as two 8 byte blocks. */
+        /* Decrypt the password hash as two 8 byte blocks. */
         des_ecb_encrypt((des_cblock *)obfKey,
-                (des_cblock *)lmHash, keySched1, DES_DECRYPT);
+                (des_cblock *)decryptedHash, (*keySched1), DES_DECRYPT);
         des_ecb_encrypt((des_cblock *)(obfKey + 8),
-                (des_cblock *)&lmHash[8], keySched2, DES_DECRYPT);
+                (des_cblock *)&decryptedHash[8], (*keySched2), DES_DECRYPT);
+
+        return decryptedHash;
     }
 
-    bool samUser::lmHashIsEmpty() {
-        if(!lmHash) {
+    bool samUser::hashIsEmpty(unsigned const char* hash, const char* emptyHashPreset) {
+        if(!hash) {
+            //the hash contains nothing
             return true;
         }
 
-        //convert the hash to a string
-        char lmHashChars[33];
-        for(int i = 0; i < 0x10 ; i++) {
-            sprintf(&(lmHashChars[i*2]), "%.2x", lmHash[i]);
+        if(!emptyHashPreset) {
+            //there is no "empty" has preset to compare to - report non-empty hash
+            return false;
         }
 
-        lmHashChars[32] = '\0';
-
-        if(strcmp(lmHashChars, "aad3b435b51404eeaad3b435b51404ee") == 0) {
+        try {
+            if(compareHash(hash, emptyHashPreset) == 0) {
+                //the hash is the same as the "empty" preset - report empty hash
+                return true;
+            }
+        } catch(owpException *exception) {
+            //we thought there was data in that array...guess not...report empty hash
+            std::cerr << "This should NEVER happen...we checked that the hash had contents, but compareHash says it's empty." << std::endl;
+            delete exception;
             return true;
         }
 
         return false;
+    }
+
+    char* samUser::hashToString(unsigned const char* hash) {
+        char *hashChars;
+
+        if(!hash) {
+            hashChars = new char[1];
+            hashChars[0] = '\0';
+            return hashChars;
+        }
+
+        //convert the hash to a string
+        hashChars = new char[33];
+        for(int i = 0; i < 0x10 ; i++) {
+            sprintf(&(hashChars[i*2]), "%.2x", hash[i]);
+        }
+
+        hashChars[32] = '\0';
+        return hashChars;
+    }
+
+    int samUser::compareHash(unsigned const char* hash, const char* stringToCompare) {
+        if(!hash) {
+            throw(new owpException("Invalid hash specified for comparison!"));
+        }
+
+        if(!stringToCompare) {
+            throw(new owpException("Invalid string specified for comparison!"));
+        }
+
+        char *hashChars = hashToString(hash);
+
+        return strcmp(hashChars, stringToCompare);
     }
 
     /**
@@ -253,5 +302,11 @@ namespace owper {
 
     samUser::~samUser() {
         FREE(vStructRegValue);
+
+        DELETE_IF_DEFINED(lmHash);
+        DELETE_IF_DEFINED(ntHash);
+        DELETE_IF_DEFINED(keySched1);
+        DELETE_IF_DEFINED(keySched2);
+        DELETE_IF_DEFINED(hashedBootKey);
     }
 }

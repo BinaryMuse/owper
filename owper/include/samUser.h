@@ -34,24 +34,26 @@
 #include "include/sam.h"
 #include "include/binaryManip.h"
 #include "include/owpException.h"
+#include "include/helpers.h"
 
 using std::string;
 
 namespace owper {
     class samUser {
     private:
-        int            rid;
-        string         userName;
-        string         fullName;
-        unsigned char *hashedBootKey;
-        unsigned char *lmHash;
-        //unsigned char *ntHash;
-        string         vStructPath;
-        char*          vBuffer;
-        ntreg::keyval *vStructRegValue;
-        ntreg::user_V *vStruct;
-        bool           hasBlankPassword;
-        bool           regDataChanged;
+        int              rid;
+        string           userName;
+        string           fullName;
+        unsigned char    *hashedBootKey;
+        unsigned char    *lmHash;
+        unsigned char    *ntHash;
+        des_key_schedule *keySched1, *keySched2;
+        string           vStructPath;
+        char*            vBuffer;
+        ntreg::keyval    *vStructRegValue;
+        ntreg::user_V    *vStruct;
+        bool             hasBlankPassword;
+        bool             regDataChanged;
 
         bool   hasValidVStructData(ntreg::keyval *vValue);
         bool   hasValidUserName(int userNameOffset, int userNameLength, int vStructLength);
@@ -60,8 +62,10 @@ namespace owper {
 
     public:
         /* syskey related functions */
-        void calcLMHash();
-        bool lmHashIsEmpty();
+        unsigned char* decryptHash(int hashOffset, int hashLength, const char* extraHashInput);
+        bool hashIsEmpty(unsigned const char* hash, const char* emptyHashPreset);
+        char* hashToString(unsigned const char* hash);
+        int compareHash(unsigned const char* hash, const char* stringToCompare);
         void ridToKey1(unsigned long rid, unsigned char deskey[8]);
         void ridToKey2(unsigned long rid, unsigned char deskey[8]);
         void strToDesKey(unsigned char *str, unsigned char *key);
