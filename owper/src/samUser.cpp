@@ -303,10 +303,10 @@ namespace owper {
     samUser::~samUser() {
         FREE(vStructRegValue);
 
-        DELETE_IF_DEFINED(lmHash);
-        DELETE_IF_DEFINED(ntHash);
+        DELETE_ARRAY_IF_DEFINED(lmHash);
+        DELETE_ARRAY_IF_DEFINED(ntHash);
         DELETE_IF_DEFINED(keySched1);
         DELETE_IF_DEFINED(keySched2);
-        DELETE_IF_DEFINED(hashedBootKey);
+        DELETE_ARRAY_IF_DEFINED(hashedBootKey);
     }
 }
