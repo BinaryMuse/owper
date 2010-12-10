@@ -65,7 +65,7 @@ namespace owper {
 
             sscanf(curClassName, "%x", (int*)(&unsortedBootKey[keyIndex*4]));
 
-            delete curClassName;
+            delete[] curClassName;
             curClassName = 0;
         }
 
