@@ -62,8 +62,6 @@ namespace owper {
 
         if(!regKeyOffset) {
             throw(new owpException("loadUserList: could not find usernames in registry!"));
-        } else {
-            cout << stringPrintf("regKeyOffset: %d\n", regKeyOffset) << endl;
         }
 
         int subKeyCount = 0;

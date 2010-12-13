@@ -172,7 +172,6 @@ void owperGUI::clearPasswords(GtkWidget *widget, gpointer owperGUIInstance) {
 
     for(unsigned int i = 0; i < thisOwperGUI->vectUserWidgets.size(); i++) {
         userWidget *curUserWidget = thisOwperGUI->vectUserWidgets.at(i);
-        cout << curUserWidget->getUserName() << endl << flush;
         if(curUserWidget->userIsSelected()) {
             curUserWidget->blankPassword();
             curUserWidget->deselectUser();

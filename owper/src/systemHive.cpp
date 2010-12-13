@@ -35,8 +35,6 @@ namespace owper {
             this->closeHive();
             throw(new owpException("The filename given does not point to a SYSTEM type hive"));
         }
-
-        printf("Default control set: %d\n", this->getDefaultControlSet());
     }
 
     int systemHive::getDefaultControlSet() {

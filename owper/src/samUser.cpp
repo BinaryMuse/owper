@@ -78,14 +78,12 @@ namespace owper {
             }
         }
 
-        printf("User: %s has blank password? %s\n", userName.c_str(), ((hasBlankPassword)?("true"):("false")));
-
         regDataChanged = false;
     }
 
     unsigned char* samUser::decryptHash(int hashOffset, int hashLength, const char* extraHashInput) {
         if(!hashedBootKey) {
-            std::cout << "No hashed boot key available!\n\n";
+            std::cerr << "No hashed boot key available!\n\n";
             return NULL;
         }
 
