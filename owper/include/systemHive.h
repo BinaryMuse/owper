@@ -18,19 +18,13 @@
  *
  */
 
-#ifndef SAM_HIVE_H
-#define SAM_HIVE_H
+#ifndef SYSTEM_HIVE_H
+#define SYSTEM_HIVE_H
 
 #include <iostream>
 #include <vector>
-
-#include <openssl/md5.h>
-#include <openssl/rc4.h>
-
 #include "include/hive.h"
 #include "include/stringManip.h"
-#include "include/sam.h"
-#include "include/samUser.h"
 
 using std::vector;
 using std::string;
@@ -39,24 +33,15 @@ using std::cerr;
 using std::endl;
 
 namespace owper {
-    class samHive : public hive {
+    class systemHive : public hive {
     private:
-        vector<samUser*> userList;
-        unsigned char* hashedBootKey;
-
-        void     loadUserList();
-        int      getUserRID(char* userName);
-        samUser* getSamUser(int rid);
-        string   getUserValue(char* dataBuffer, int valueOffset, int valueLength);
-
-        //syskey related methods
-        unsigned char* getFValue();
-        unsigned char* getHashedBootKey(unsigned char* bootKey);
-
+        int getDefaultControlSet();
+        void sortBootKey(unsigned char* unsortedBootKey, unsigned char* sortedBootKey);
+        char* getClassName(char* nkKeyPath);
     public:
-        samHive(const char* fileName, unsigned char* bootKey, int hiveMode = HMODE_RW);
-        vector<samUser*> getUserList(){ return userList; };
-        bool     mergeChangesToHive();
+        systemHive(const char* fileName, int hiveMode = HMODE_RO);
+
+        unsigned char* getBootKey();
     };
 
 }

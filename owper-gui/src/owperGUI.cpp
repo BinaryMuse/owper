@@ -72,6 +72,8 @@ owperGUI::owperGUI( string initHivePath/*=""*/) {
 
     gtk_widget_show_all(winMain);
 
+    system = new systemHive("/windows/WINDOWS/system32/config/system");
+
     if(initHivePath != "") {
         changeHiveFile(initHivePath);
     }
@@ -115,7 +117,7 @@ bool owperGUI::changeHiveFile(string newFileName) {
     }
 
     try {
-        sam = new samHive(newFileName.c_str());
+        sam = new samHive(newFileName.c_str(), system->getBootKey());
     }catch(owpException *exception) {
         //if sam got assigned something, delete it!
         if(sam) {
@@ -170,7 +172,6 @@ void owperGUI::clearPasswords(GtkWidget *widget, gpointer owperGUIInstance) {
 
     for(unsigned int i = 0; i < thisOwperGUI->vectUserWidgets.size(); i++) {
         userWidget *curUserWidget = thisOwperGUI->vectUserWidgets.at(i);
-        cout << curUserWidget->getUserName() << endl << flush;
         if(curUserWidget->userIsSelected()) {
             curUserWidget->blankPassword();
             curUserWidget->deselectUser();

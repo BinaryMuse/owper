@@ -56,6 +56,26 @@ namespace owper {
         return (SCAN_KEY_RESULT)ntreg::ex_next_n(this->regHive, nkofs, count, countri, sptr);
     }
 
+    /**
+     * Return the nk_key struct pointed too by offset
+     * @param reg_off The offset of the nk_key as returned by travPath()
+     * @return nk_key A valid nk_key struct
+     * @throws owpException if the offset doesn't point to a valid nk_key
+     */
+    struct ntreg::nk_key *hive::getNkKeyAtOffset(reg_off offset) {
+    	reg_off nkOffset = offset + 4;
+    	struct ntreg::nk_key *nkKey = (ntreg::nk_key*)(nkOffset + this->regHive->buffer);
+
+    	/* make sure it's really an nk_key
+    	   putting this check here will prevent us typing it over and over
+    	   every time we access this function */
+    	if (nkKey->id != 0x6b6e) {
+    		throw(new owpException(stringPrintf("Invalid nk_key offset: 0x%x", (unsigned int)offset)));
+    	}
+
+    	return nkKey;
+    }
+
     struct ntreg::keyval *hive::copyValueToBuffer(struct ntreg::keyval *kv, int vofs, char *path, int type) {
         return ntreg::get_val2buf(this->regHive, kv, vofs, path, type);
     }

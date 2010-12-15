@@ -1,1 +1,1 @@
-This program hopes to be a graphical version of chntpw, for those unskilled in command line use.
+This program hopes to be a graphical version of chntpw, for those unskilled in command line use.  It is not only based on chntpw, but also borrows code from bkhive and samdump2.  Since I've added the code from the latter two, I'm still working out how to do the licensing, so please don't thwart me with the GNU book just yet...I'll fix it.

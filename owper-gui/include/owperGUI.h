@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "include/samHive.h"
+#include "include/systemHive.h"
 #include "include/userWidget.h"
 
 using namespace std;
@@ -48,6 +49,7 @@ class owperGUI
 
         string stringSamFileName;
         samHive  *sam;
+        systemHive *system;
         vector<userWidget*> vectUserWidgets;
 
     public:
